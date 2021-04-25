@@ -4,24 +4,37 @@
 # DEPENDECNIES (python): pyserial psutil
 
 import datetime, os, psutil, serial, time
+from typing import Tuple
 
 # file to send serial data to
 file_descriptor = '/dev/ttyACM0'
+baud_rate = 9600
 
-# time to wait until serial port is open when initializing the connection
+# time to wait until serial port is open after initializing the connection
 serial_init_interval_seconds = 6
 # time between updates to the serial port
 serial_update_interval_seconds = 3
 
+
 def format_float_as_string(number: float, integer_digits: int, decimal_digits: int) -> str:
-    """ Converts a positive float into a string representation using the specified format.
-        The integer part will be left-padded with spaces if 'number' has more than 'integer_digits'
-        number of digits. If the number of digits of 'number' is larger than 'integer_digits', the
-        integer part will be the largest integer possible with 'integer_digits' number of digits.
+    """ Converts a float into its string representation according to the arguments.
 
-        TODO For negative numbers, the first integer digit will be a '-'.
+        The integer part of the resulting string will contain exactly 'integer_digits' number of
+        characters. Excess space is padded with blank spaces. If 'number' is larger than the largest
+        number that can be represented with 'integer_digits' number of digits, the largest number
+        is used. This behaviour is analogous for negative numbers.
 
-        The decimal part of the resulting string will be padded with zeroes if necessary.
+        The decimal part of the resulting string will contain exactly 'decimal_digits' number of
+        characters. Excess space is padded with zeroes.
+
+        For negative input numbers, '-' occupies one character in the integer part of the resulting
+        string.
+
+        Examples
+        --------
+        format_float_as_string(123.45, 4, 3) -> ' 123.450'
+        format_float_as_string(123.45, 2, 1) ->   '99.4'
+        format_float_as_string(-23.45, 2, 3) ->   '-9.450'
 
         Arguments
         ---------
@@ -33,6 +46,12 @@ def format_float_as_string(number: float, integer_digits: int, decimal_digits: i
 
         decimal_digits : int
             The number of digits which the decimal/fractional part of the string representation will have.
+
+        Returns
+        -------
+        float_as_string : str
+            A string representation of number, where the number of characters before the decimal point is exactly
+            'integer_digits' and where the number of characters after the decimal point is exactly 'decimal_digits'.
     """
     # calculate smallest/largest possible integer for the given number of integer digits,
     # taking into account the '-' sign on negative numbers
@@ -65,14 +84,19 @@ def format_float_as_string(number: float, integer_digits: int, decimal_digits: i
 
     return integer_part + '.' + decimal_part
 
-def get_load_avg():
-    """ Returns a tuple of strings containing load average information to display on a 16x2 LCD.
-        Output is padded with spaces to fill two rows of 16 characters each:
-        '    Load AVG    '
-        'XX.XX XX.XX XX.X'
-        The first string in the returned tuple is the first row's content,
-        the second string is the second row's content.
-        
+def get_load_avg() -> Tuple[str]:
+    """ Retrieve average load values of the system.
+
+    Returns a tuple containing two strings, each of 16 characters in length.
+    The first and second string contained are in the following format respectively:
+    '    Load AVG    '
+    'XX.XX XX.XX XX.X'
+    
+    Returns
+    -------
+    output : Tuple(str)
+        A tuple containing two strings, each of 16 characters in length.
+        They contain system information about CPU load averages.
     """
     # psutil.getloadavg() produces three floats inside a tuple
     load_all = psutil.getloadavg()
@@ -93,13 +117,18 @@ def get_load_avg():
     return output
 
 def get_cpu_usage():
-    """ Returns a tuple of strings containing CPU usage information to display on a 16x2 LCD.
-        Output is padded with spaces to fill two rows of 16 characters each:
-        '   CPU  Usage   '
-        'XXXX.XMHz XXX.X%'
-        The first string in the returned tuple is the first row's content,
-        the second string is the second row's content.
-        
+    """ Retrieve current CPU frequency and utilization (in percent) of the system.
+
+    Returns a tuple containing two strings, each of 16 characters in length.
+    The first and second string contained are in the following format respectively:
+    '   CPU  Usage   '
+    'XXXX.XMHz XXX.X%'
+    
+    Returns
+    -------
+    output : Tuple(str)
+        A tuple containing two strings, each of 16 characters in length.
+        They contain system information about current CPU frequency and utilization.
     """
     # each call returns a float
     cpu_freq = psutil.cpu_freq()[0]
@@ -116,13 +145,18 @@ def get_cpu_usage():
     return output
 
 def get_memory_usage():
-    """ Returns a tuple of strings containing memory usage information to display on a 16x2 LCD.
-        Output is padded with spaces to fill two rows of 16 characters each:
-        '   MEM  Usage   '
-        'XX.XXXGiB XXX.X%'
-        The first string in the returned tuple is the first row's content,
-        the second string is the second row's content.
-        
+    """ Retrieve current memory usage of the system.
+
+    Returns a tuple containing two strings, each of 16 characters in length.
+    The first and second string contained are in the following format respectively:
+    '   MEM  Usage   '
+    'XX.XXXGiB XXX.X%'
+    
+    Returns
+    -------
+    output : Tuple(str)
+        A tuple containing two strings, each of 16 characters in length.
+        They contain system information about current memory usage.
     """
     # each call returns a float
     mem_used_bytes = psutil.virtual_memory().used
@@ -142,33 +176,54 @@ def get_memory_usage():
     return output
 
 def get_cpu_mobo_temperature():
-    """ Returns a tuple of strings containing CPU/Mainboard temperature information to display on a 16x2 LCD.
-        Output is padded with spaces to fill two rows of 16 characters each:
-        'CPU  Temp XXX.XC'
-        'MoBo Temp XXX.XC'
-        The first string in the returned tuple is the first row's content,
-        the second string is the second row's content.
-        
-    """
-    # each call returns a float
-    cpu_temp = psutil.sensors_temperatures().get('k10temp')[0].current
-    mobo_temp = psutil.sensors_temperatures().get('thinkpad')[0].current
+    """ Retrieve current CPU and mainboard temperature readings of the system.
 
-    output = (
-        'CPU  Temp {}C'.format(format_float_as_string(cpu_temp, 3, 1)),
-        'MoBo Temp {}C'.format(format_float_as_string(mobo_temp, 3, 1))
-    )
+    Returns a tuple containing two strings, each of 16 characters in length.
+    The first and second string contained are in the following format respectively:
+    'CPU  Temp XXX.XC'
+    'MoBo Temp XXX.XC'
+    
+    Returns
+    -------
+    output : Tuple(str)
+        A tuple containing two strings, each of 16 characters in length.
+        They contain information about current CPU/chipset temperature readings.
+    """
+    # XXX the following function calls are system-specific!
+    # Use 'sensor_info.py' to determine the correct sensors for your system.
+    # More info: 'https://psutil.readthedocs.io/en/latest/#psutil.sensors_temperatures'
+    try:
+        # works on AMD processors
+        cpu_temp = psutil.sensors_temperatures().get('k10temp')[0].current
+        # works on thinkpad mainboards
+        mobo_temp = psutil.sensors_temperatures().get('thinkpad')[0].current
+
+        output = (
+            'CPU  Temp {}C'.format(format_float_as_string(cpu_temp, 3, 1)),
+            'MoBo Temp {}C'.format(format_float_as_string(mobo_temp, 3, 1))
+        )
+    except TypeError:
+        print("get_cpu_mobo_temperature(): Failed sensor lookup! Please enter correct sensor information.")
+        output = (
+            'CPU  Temp {}C'.format(" NaN "),
+            'MoBo Temp {}C'.format(" NaN ")
+        )
 
     return output
 
 def get_uptime():
-    """ Returns a tuple of strings containing system uptime information to display on a 16x2 LCD.
-        Output is padded with spaces to fill two rows of 16 characters each:
-        '     Uptime     '
-        'XXXX d XX h XX m'
-        The first string in the returned tuple is the first row's content,
-        the second string is the second row's content.
-        
+    """ Retrieve current system uptime information.
+
+    Returns a tuple containing two strings, each of 16 characters in length.
+    The first and second string contained are in the following format respectively:
+    '     Uptime     '
+    'XXXX d XX h XX m'
+    
+    Returns
+    -------
+    output : Tuple(str)
+        A tuple containing two strings, each of 16 characters in length.
+        They contain system information about the current uptime.
     """
     time_of_boot = datetime.datetime.fromtimestamp(psutil.boot_time())
     time_since_boot = datetime.datetime.now() - time_of_boot
@@ -196,29 +251,31 @@ def get_uptime():
 
     return output
 
-# open the serial port
-arduino = serial.Serial(port=file_descriptor, baudrate=9600)
-time.sleep(serial_init_interval_seconds)
+def main():
+    """ Periodically sends system information strings to the serial port.
+    """
 
+    # open the serial port
+    arduino = serial.Serial(port=file_descriptor, baudrate=baud_rate)
+    # wait a while until it is ready to receive
+    time.sleep(serial_init_interval_seconds)
 
-# begin continuous loop
-while True:
-    cpu_usage_display = get_cpu_usage()
-    arduino.write(bytes(cpu_usage_display[0] + cpu_usage_display[1], 'utf-8'))
-    time.sleep(serial_update_interval_seconds)
+    # functions displaying different system information in the same format
+    sysinfo_functions = [
+        get_cpu_usage,
+        get_load_avg,
+        get_memory_usage,
+        get_uptime,
+        get_cpu_mobo_temperature
+    ]
 
-    load_avg_display = get_load_avg()
-    arduino.write(bytes(load_avg_display[0] + load_avg_display[1], 'utf-8'))
-    time.sleep(serial_update_interval_seconds)
+    # begin continuous loop, wait between transmissions
+    while True:
+        # call each function and send its output to the serial connection
+        for function in sysinfo_functions:
+            display_output = function()
+            arduino.write(bytes(display_output[0] + display_output[1], 'utf-8'))
+            time.sleep(serial_update_interval_seconds)
 
-    mem_usage_display = get_memory_usage()
-    arduino.write(bytes(mem_usage_display[0] + mem_usage_display[1], 'utf-8'))
-    time.sleep(serial_update_interval_seconds)
-
-    uptime_display = get_uptime()
-    arduino.write(bytes(uptime_display[0] + uptime_display[1], 'utf-8'))
-    time.sleep(serial_update_interval_seconds)
-
-    temp_display = get_cpu_mobo_temperature()
-    arduino.write(bytes(temp_display[0] + temp_display[1], 'utf-8'))
-    time.sleep(serial_update_interval_seconds)
+if __name__ == "__main__":
+    main()
