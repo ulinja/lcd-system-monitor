@@ -1,10 +1,10 @@
 # LCD System Monitor
 
-Display and monitor Linux system information on an external, microcontroller-driven 16x2 LCD.
+Display and monitor system information on an external, microcontroller-driven 16x2 LCD.
 
 ![lcd demo](/doc/img/demo.gif)
 
-I use this to display my headless Linux server's current system stats on an LCD
+I use this to display my headless server's current system stats on an LCD
 embedded in the case. Doesn't just look awesome, it's also somewhat useful!
 The LCD is driven by an Arduino Nano R3, but any 5V microcontroller with a serial
 monitor should also work.
